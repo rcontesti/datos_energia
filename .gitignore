@@ -1,0 +1,13 @@
+.venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.DS_Store
+
+# Never commit raw source downloads
+data/raw/
+*.tmp
+manual/
+data/processed/*.csv
+data/processed/*.parquet
+reports/by_well.csv
