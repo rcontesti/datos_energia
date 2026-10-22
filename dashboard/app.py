@@ -8,7 +8,7 @@ import streamlit as st
 
 
 ROOT = Path(__file__).resolve().parents[1]
-DATA_PATH = ROOT / "data" / "processed" / "cgc_production_2026.parquet"
+DATA_PATH = ROOT / "data" / "processed" / "cgc_production_2025_2026.parquet"
 
 PRODUCTION_COLUMNS = {
     "prod_pet": "Oil production (m³)",
@@ -55,10 +55,6 @@ def load_data(path: str, modified_time: float) -> pd.DataFrame:
         df[col] = pd.to_numeric(df[col], errors="coerce")
 
     return df
-
-
-def month_label(month: int) -> str:
-    return f"2026-{int(month):02d}"
 
 
 def format_number(value: float, decimals: int = 0) -> str:
@@ -135,9 +131,50 @@ def production_variation(
     return label, variation, help_text
 
 
+def quarterly_variation(
+    quarterly_data: pd.DataFrame,
+    production: str,
+    quarters_back: int,
+) -> tuple[str, str, str]:
+    latest = quarterly_data.iloc[-1]
+    target_date = latest["quarter_start"] - pd.DateOffset(
+        months=quarters_back * 3
+    )
+    reference = quarterly_data.loc[
+        quarterly_data["quarter_start"].eq(target_date)
+    ]
+    label = "vs previous quarter" if quarters_back == 1 else "vs same quarter last year"
+
+    if reference.empty:
+        target_quarter = (target_date.month - 1) // 3 + 1
+        return (
+            label,
+            "N/A",
+            f"No data available for {target_date.year} Q{target_quarter}.",
+        )
+
+    reference_row = reference.iloc[0]
+    reference_value = reference_row[production]
+    latest_value = latest[production]
+    if (
+        pd.isna(latest_value)
+        or pd.isna(reference_value)
+        or reference_value == 0
+    ):
+        variation = "N/A"
+    else:
+        variation = f"{(latest_value / reference_value - 1) * 100:+.1f}%"
+
+    return (
+        label,
+        variation,
+        f"Latest quarter compared with {reference_row['period']}.",
+    )
+
+
 st.title("CGC Oil & Gas Production")
 st.caption(
-    "2026 well-level production • Original source units • "
+    "2025–2026 well-level production • Original source units • "
     "Direct CGC operations plus YPF-operated wells in Aguada del Chañar"
 )
 
@@ -238,6 +275,70 @@ for index, resource_type in enumerate(resource_types):
                     production,
                     months_back,
                     fallback_to_earliest=fallback,
+                )
+                metric_column.metric(
+                    metric_label,
+                    variation,
+                    help=help_text,
+                )
+            st.plotly_chart(fig)
+
+st.subheader("Quarterly production by resource type")
+st.caption(
+    "Quarterly totals sum the monthly volumes in each calendar quarter. "
+    "Variations compare the latest available quarter with the previous quarter "
+    "and the same quarter one year earlier."
+)
+
+quarterly_production = df.copy()
+quarterly_production["quarter"] = (quarterly_production["mes"] - 1) // 3 + 1
+quarterly_production = (
+    quarterly_production.groupby(
+        ["anio", "quarter", "tipo_de_recurso"],
+        dropna=False,
+    )[list(PRODUCTION_COLUMNS)]
+    .sum(min_count=1)
+    .reset_index()
+    .sort_values(["anio", "quarter"])
+)
+quarterly_production["quarter_start"] = pd.to_datetime(
+    {
+        "year": quarterly_production["anio"],
+        "month": (quarterly_production["quarter"] - 1) * 3 + 1,
+        "day": 1,
+    }
+)
+quarterly_production["period"] = (
+    quarterly_production["anio"].astype(str)
+    + " Q"
+    + quarterly_production["quarter"].astype(str)
+)
+
+quarterly_chart_columns = st.columns(2)
+for index, resource_type in enumerate(resource_types):
+    resource_quarters = quarterly_production.loc[
+        quarterly_production["tipo_de_recurso"].eq(resource_type)
+    ].sort_values("quarter_start")
+    for production, label in PRODUCTION_COLUMNS.items():
+        fig = px.bar(
+            resource_quarters,
+            x="period",
+            y=production,
+            title=f"{resource_type} — {label}",
+            labels={"period": "Quarter", production: label},
+            category_orders={"period": resource_quarters["period"].tolist()},
+        )
+        fig.update_layout(height=320, margin={"t": 55, "b": 20})
+        with quarterly_chart_columns[index % len(quarterly_chart_columns)]:
+            metric_columns = st.columns(2)
+            for metric_column, quarters_back in (
+                (metric_columns[0], 1),
+                (metric_columns[1], 4),
+            ):
+                metric_label, variation, help_text = quarterly_variation(
+                    resource_quarters,
+                    production,
+                    quarters_back,
                 )
                 metric_column.metric(
                     metric_label,

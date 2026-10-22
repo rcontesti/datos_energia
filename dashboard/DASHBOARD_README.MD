@@ -30,16 +30,18 @@ streamlit run dashboard/app.py
 
 Streamlit will print a local URL, usually `http://localhost:8501`.
 
-The dashboard reads `data/processed/cgc_production_2026.parquet`; it does not
+The dashboard reads `data/processed/cgc_production_2025_2026.parquet`; it does not
 download or modify source data itself. After running the data updater, refresh
 the dashboard page to view the updated data.
 
 ## Dashboard contents
 
-- Monthly oil and gas totals by year, month, and resource type.
-- Separate monthly oil and gas trend charts for each resource type.
+- Monthly oil and gas totals by year, month, and resource type for 2025 and 2026.
+- Separate monthly oil and gas trend charts for each resource type across both years.
 - Percentage changes versus the previous month and versus 12 months earlier
   (using the earliest available month when that 12-month comparison is unavailable).
+- Quarterly oil and gas bar charts by resource type, with quarter-over-quarter
+  and year-over-year variation for the latest available quarter.
 - Latest selected month's oil and gas production, plus month-over-month change.
 - Production split by direct CGC operations and YPF-operated Aguada del Chañar wells.
 - Area rankings for the selected period.

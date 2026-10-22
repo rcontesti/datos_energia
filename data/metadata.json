@@ -1,10 +1,57 @@
 {
-  "source_url": "http://datos.energia.gob.ar/dataset/c846e79c-026c-4040-897f-1ad3543b407c/resource/fb7a47a0-cba9-4667-a004-6f6c1c346c23/download/produccin-de-pozos-de-gas-y-petrleo-2026.csv",
   "source_repository": "https://github.com/datosenergia/produccion-de-petroleo-y-gas-por-pozo",
-  "downloaded_at": "2026-10-21T14:46:37.650286+00:00",
-  "source_year": 2026,
-  "rows_source": 738993,
-  "rows_filtered": 60552,
+  "downloaded_at": "2026-10-22T18:06:52.416670+00:00",
+  "source_years": [
+    2025,
+    2026
+  ],
+  "years_retained": [
+    2025,
+    2026
+  ],
+  "sources": [
+    {
+      "year": 2025,
+      "source_url": "http://datos.energia.gob.ar/dataset/c846e79c-026c-4040-897f-1ad3543b407c/resource/d774b5d7-0756-48fe-88f2-8729b57b22da/download/produccin-de-pozos-de-gas-y-petrleo-2025.csv",
+      "rows_source": 991936,
+      "rows_filtered": 88068,
+      "months_retained": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12
+      ],
+      "latest_month": 12
+    },
+    {
+      "year": 2026,
+      "source_url": "http://datos.energia.gob.ar/dataset/c846e79c-026c-4040-897f-1ad3543b407c/resource/fb7a47a0-cba9-4667-a004-6f6c1c346c23/download/produccin-de-pozos-de-gas-y-petrleo-2026.csv",
+      "rows_source": 739087,
+      "rows_filtered": 60552,
+      "months_retained": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9
+      ],
+      "latest_month": 9
+    }
+  ],
+  "rows_source": 1731023,
+  "rows_filtered": 148620,
   "companies_retained": [
     "CGC ENERGIA SAU",
     "COMPAÑÍA GENERAL DE COMBUSTIBLES S.A.",
@@ -16,6 +63,7 @@
     "BAJADA FORTALEZA",
     "BARDA LAS VEGAS",
     "BLOQUE 127",
+    "CACHEUTA",
     "CAMPO BOLEADORAS ",
     "CAMPO INDIO",
     "CAMPO INDIO ESTE - EL CERRITO ",
@@ -45,6 +93,7 @@
     "PASO FUHR",
     "PIEDRA CLAVADA (CGSJ-IV)",
     "PIEDRABUENA",
+    "PIEDRAS COLORADAS - ESTRUCTURA INTERMEDIA",
     "PUESTO OLIVERIO",
     "PUESTO PETER",
     "SANTA CRUZ I - FRACCION A",
@@ -63,10 +112,14 @@
     6,
     7,
     8,
-    9
+    9,
+    10,
+    11,
+    12
   ],
+  "latest_year": 2026,
   "latest_month": 9,
-  "output_file": "data/processed/cgc_production_2026.parquet",
+  "output_file": "data/processed/cgc_production_2025_2026.parquet",
   "filter_rules": {
     "companies": [
       "COMPAÑÍA GENERAL DE COMBUSTIBLES S.A.",

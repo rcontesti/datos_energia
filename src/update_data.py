@@ -25,6 +25,7 @@ REQUIRED_COLUMNS = {
     "areapermisoconcesion",
     "prod_pet",
     "prod_gas",
+    "tipo_de_recurso",
     "fecha_data",
 }
 
@@ -152,46 +153,72 @@ def generate_reports(df: pd.DataFrame) -> None:
 
 def main() -> None:
     config = load_config()
-    year = int(config["source_year"])
+    sources = config["sources"]
+    years = [int(source["year"]) for source in sources]
+    if not sources:
+        raise ValueError("At least one production source must be configured.")
+    if len(years) != len(set(years)):
+        raise ValueError("Production source years must be unique.")
 
     DATA_DIR.mkdir(parents=True, exist_ok=True)
 
     with tempfile.TemporaryDirectory() as temp_dir:
-        source_path = Path(temp_dir) / f"source_{year}.csv"
-        print("Downloading source CSV...")
-        download_source(config["source_url"], source_path)
+        filtered_sources = []
+        source_summaries = []
+        for source_config in sources:
+            year = int(source_config["year"])
+            source_path = Path(temp_dir) / f"source_{year}.csv"
+            print(f"Downloading {year} source CSV...")
+            download_source(source_config["url"], source_path)
 
-        print("Reading CSV with pandas...")
-        # source = pd.read_csv(source_path, encoding="utf-8-sig")
-        source = pd.read_csv(
-            source_path,
-            encoding="utf-8-sig",
-            low_memory=False,
-            dtype={
-                "observaciones": "string",
-                "sub_tipo_recurso": "string",
-            },
-        )
-        source_rows = len(source)
+            print(f"Reading {year} source CSV with pandas...")
+            source = pd.read_csv(
+                source_path,
+                encoding="utf-8-sig",
+                low_memory=False,
+                dtype={
+                    "observaciones": "string",
+                    "sub_tipo_recurso": "string",
+                },
+            )
+            source_rows = len(source)
+            validate_source(source, year)
 
-        validate_source(source, year)
+            print(f"Source rows: {source_rows:,}")
+            print(f"Filtering {year} CGC production universe...")
+            filtered = filter_production(source, config)
+            validate_filtered(filtered, year)
+            filtered_sources.append(filtered)
+            source_summaries.append(
+                {
+                    "year": year,
+                    "source_url": source_config["url"],
+                    "rows_source": source_rows,
+                    "rows_filtered": len(filtered),
+                    "months_retained": sorted(
+                        filtered["mes"].dropna().astype(int).unique().tolist()
+                    ),
+                    "latest_month": int(filtered["mes"].max()),
+                }
+            )
 
-        print(f"Source rows: {source_rows:,}")
-        print("Filtering CGC production universe...")
-        filtered = filter_production(source, config)
-        validate_filtered(filtered, year)
+        filtered = pd.concat(filtered_sources, ignore_index=True)
 
     # Save the dataset and reports only after validation succeeds.
-    output_path = DATA_DIR / f"cgc_production_{year}.parquet"
+    output_path = DATA_DIR / f"cgc_production_{min(years)}_{max(years)}.parquet"
     filtered.to_parquet(output_path, index=False, engine="pyarrow")
     generate_reports(filtered)
 
+    latest_period = filtered.sort_values(["anio", "mes"]).iloc[-1]
     metadata = {
-        "source_url": config["source_url"],
         "source_repository": config["source_repository"],
         "downloaded_at": datetime.now(timezone.utc).isoformat(),
-        "source_year": year,
-        "rows_source": source_rows,
+        "source_years": sorted(years),
+        "years_retained": sorted(
+            filtered["anio"].dropna().astype(int).unique().tolist()
+        ),
+        "sources": source_summaries,
+        "rows_source": sum(item["rows_source"] for item in source_summaries),
         "rows_filtered": len(filtered),
         "companies_retained": sorted(
             filtered["empresa"].dropna().unique().tolist()
@@ -202,7 +229,8 @@ def main() -> None:
         "months_retained": sorted(
             filtered["mes"].dropna().astype(int).unique().tolist()
         ),
-        "latest_month": int(filtered["mes"].max()),
+        "latest_year": int(latest_period["anio"]),
+        "latest_month": int(latest_period["mes"]),
         "output_file": str(output_path.relative_to(ROOT)),
         "filter_rules": config["groups"]["CGC"],
     }
@@ -214,9 +242,10 @@ def main() -> None:
     )
 
     print("\nUpdate completed.")
-    print(f"Source rows:   {source_rows:,}")
+    print(f"Source years:  {sorted(years)}")
+    print(f"Source rows:   {metadata['rows_source']:,}")
     print(f"Retained rows: {len(filtered):,}")
-    print(f"Months:        {metadata['months_retained']}")
+    print(f"Years:         {metadata['source_years']}")
     print(f"Parquet:       {output_path.relative_to(ROOT)}")
     print(f"Reports:       {REPORTS_DIR.relative_to(ROOT)}")
 

@@ -1,7 +1,7 @@
 # datos_energia — Project Overview, Engineering Guide and Roadmap
 
-**Status:** Engineering handover / living project guide  
-**Current scope:** 2026 Argentina well-level oil and gas production  
+**Status:** Engineering handover / living project guide
+**Current scope:** 2026 Argentina well-level oil and gas production
 **Primary tools:** Python, pandas, PyArrow/Parquet, Streamlit, Plotly
 
 ## 1. What we are building
@@ -47,7 +47,7 @@ The current project is a **production-data foundation**, not yet a revenue, cash
 
 Current source:
 
-`http://datos.energia.gob.ar/dataset/c846e79c-026c-4040-897f-1ad3543b407c/resource/fb7a47a0-cba9-4667-a004-6f6c1c346c23/download/produccin-de-pozos-de-gas-y-petrleo-2026.csv`
+`	dataset/c846e79c-026c-4040-897f-1ad3543b407c/resource/fb7a47a0-cba9-4667-a004-6f6c1c346c23/download/produccin-de-pozos-de-gas-y-petrleo-2026.csv`
 
 Upstream repository:
 
@@ -95,11 +95,11 @@ Company and area matching is currently exact string matching. If the publisher c
 
 Source units are preserved:
 
-| Field | Meaning | Unit |
-|---|---|---|
-| `prod_pet` | Oil production | m³ |
-| `prod_gas` | Gas production | thousand m³ |
-| `prod_agua` | Water production | m³ |
+| Field         | Meaning          | Unit         |
+| ------------- | ---------------- | ------------ |
+| `prod_pet`  | Oil production   | m³          |
+| `prod_gas`  | Gas production   | thousand m³ |
+| `prod_agua` | Water production | m³          |
 
 Monthly totals are reported monthly volumes, **not daily production rates** and not seasonally adjusted.
 
@@ -247,38 +247,38 @@ The reports are validation/convenience outputs. Parquet remains the detailed dat
 
 First successful run on 2026-10-21:
 
-| Check | Result |
-|---|---:|
-| Source rows | 738,993 |
-| Filtered rows | 60,552 |
-| Months | Jan–Sep 2026 |
-| Output columns | 40 |
-| Duplicate `anio`-`mes`-`idpozo` keys | 0 |
-| Missing `prod_pet` | 0 |
-| Missing `prod_gas` | 0 |
+| Check                                      |        Result |
+| ------------------------------------------ | ------------: |
+| Source rows                                |       738,993 |
+| Filtered rows                              |        60,552 |
+| Months                                     | Jan–Sep 2026 |
+| Output columns                             |            40 |
+| Duplicate `anio`-`mes`-`idpozo` keys |             0 |
+| Missing `prod_pet`                       |             0 |
+| Missing `prod_gas`                       |             0 |
 
 Filtered rows:
 
-| Company | Origin | Rows |
-|---|---|---:|
-| CGC ENERGIA SAU | CGC_DIRECTO | 12,964 |
-| COMPAÑÍA GENERAL DE COMBUSTIBLES S.A. | CGC_DIRECTO | 46,895 |
-| YPF S.A. | YPF_AGUADA_DEL_CHAÑAR | 693 |
-| **Total** | | **60,552** |
+| Company                                 | Origin                 |             Rows |
+| --------------------------------------- | ---------------------- | ---------------: |
+| CGC ENERGIA SAU                         | CGC_DIRECTO            |           12,964 |
+| COMPAÑÍA GENERAL DE COMBUSTIBLES S.A. | CGC_DIRECTO            |           46,895 |
+| YPF S.A.                                | YPF_AGUADA_DEL_CHAÑAR |              693 |
+| **Total**                         |                        | **60,552** |
 
 Observed monthly totals:
 
-| Month | Oil m³ | Gas thousand m³ |
-|---|---:|---:|
-| Jan | 195,741.97 | 153,067.85 |
-| Feb | 180,516.46 | 138,275.89 |
-| Mar | 191,956.64 | 149,473.79 |
-| Apr | 173,308.96 | 140,369.19 |
-| May | 172,336.89 | 139,274.12 |
-| Jun | 158,685.07 | 131,996.42 |
-| Jul | 161,800.57 | 128,919.80 |
-| Aug | 158,709.39 | 127,349.88 |
-| Sep | 152,507.77 | 126,928.20 |
+| Month |    Oil m³ | Gas thousand m³ |
+| ----- | ---------: | ---------------: |
+| Jan   | 195,741.97 |       153,067.85 |
+| Feb   | 180,516.46 |       138,275.89 |
+| Mar   | 191,956.64 |       149,473.79 |
+| Apr   | 173,308.96 |       140,369.19 |
+| May   | 172,336.89 |       139,274.12 |
+| Jun   | 158,685.07 |       131,996.42 |
+| Jul   | 161,800.57 |       128,919.80 |
+| Aug   | 158,709.39 |       127,349.88 |
+| Sep   | 152,507.77 |       126,928.20 |
 
 These are baseline checks, not permanent expected values. Upstream revisions may change them.
 

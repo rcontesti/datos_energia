@@ -7,7 +7,7 @@ import pandas as pd
 
 
 ROOT = Path(__file__).resolve().parents[1]
-DEFAULT_INPUT = ROOT / "data" / "processed" / "cgc_production_2026.parquet"
+DEFAULT_INPUT = ROOT / "data" / "processed" / "cgc_production_2025_2026.parquet"
 DEFAULT_OUTPUT = DEFAULT_INPUT.with_suffix(".csv")
 
 

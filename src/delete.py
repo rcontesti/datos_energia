@@ -1,7 +1,7 @@
 
 import pandas as pd
 
-df = pd.read_parquet("data/processed/cgc_production_2026.parquet")
+df = pd.read_parquet("data/processed/cgc_production_2025_2026.parquet")
 
 # Check whether a well appears more than once in a month.
 keys = ["anio", "mes", "idpozo"]
@@ -20,7 +20,7 @@ if not duplicates.empty:
 # Compare direct CGC with the YPF partnership.
 print("\nMonthly production by origin:")
 print(
-    df.groupby(["mes", "origen_grupo"])[["prod_pet", "prod_gas"]]
+    df.groupby(["anio", "mes", "origen_grupo"])[["prod_pet", "prod_gas"]]
     .sum(min_count=1)
     .round(2)
     .to_string()
