@@ -1,4 +1,3 @@
-
 # CGC production dashboard
 
 ## Install dependencies
@@ -37,8 +36,11 @@ the dashboard page to view the updated data.
 
 ## Dashboard contents
 
+- Monthly oil and gas totals by year, month, and resource type.
+- Separate monthly oil and gas trend charts for each resource type.
+- Percentage changes versus the previous month and versus 12 months earlier
+  (using the earliest available month when that 12-month comparison is unavailable).
 - Latest selected month's oil and gas production, plus month-over-month change.
-- Monthly oil and gas trends in separate charts because they use different units.
 - Production split by direct CGC operations and YPF-operated Aguada del Chañar wells.
 - Area rankings for the selected period.
 - Filterable well-level records and a CSV download containing all filtered columns.

@@ -40,6 +40,7 @@ def load_data(path: str, modified_time: float) -> pd.DataFrame:
         "areapermisoconcesion",
         "prod_pet",
         "prod_gas",
+        "tipo_de_recurso",
         "grupo",
         "origen_grupo",
     }
@@ -88,8 +89,159 @@ def month_over_month(
     return f"{change:+.1f}%"
 
 
+def production_variation(
+    resource_data: pd.DataFrame,
+    production: str,
+    months_back: int,
+    fallback_to_earliest: bool = False,
+) -> tuple[str, str, str]:
+    latest = resource_data.iloc[-1]
+    target_date = latest["date"] - pd.DateOffset(months=months_back)
+    reference = resource_data.loc[resource_data["date"].eq(target_date)]
+    used_fallback = False
+
+    if reference.empty and fallback_to_earliest:
+        reference = resource_data.iloc[[0]]
+        used_fallback = True
+
+    if reference.empty:
+        label = "vs last month" if months_back == 1 else "vs 12 months ago"
+        return label, "N/A", f"No data available for {target_date:%b %Y}."
+
+    reference_row = reference.iloc[0]
+    reference_date = reference_row["date"]
+    reference_value = reference_row[production]
+    latest_value = latest[production]
+
+    if (
+        pd.isna(latest_value)
+        or pd.isna(reference_value)
+        or reference_value == 0
+    ):
+        variation = "N/A"
+    else:
+        variation = f"{(latest_value / reference_value - 1) * 100:+.1f}%"
+
+    if used_fallback:
+        label = "vs earliest available"
+        help_text = (
+            f"No data for {target_date:%b %Y}; compared with "
+            f"{reference_date:%b %Y}, the earliest available month."
+        )
+    else:
+        label = "vs last month" if months_back == 1 else "vs 12 months ago"
+        help_text = f"Compared with {reference_date:%b %Y}."
+
+    return label, variation, help_text
+
+
 st.title("CGC Oil & Gas Production")
 st.caption(
     "2026 well-level production • Original source units • "
     "Direct CGC operations plus YPF-operated wells in Aguada del Chañar"
 )
+
+df = load_data(str(DATA_PATH), DATA_PATH.stat().st_mtime)
+
+st.subheader("Monthly production by resource type")
+st.caption(
+    "Monthly totals by year and resource type • "
+    "Oil in m³ • Gas in thousand m³"
+)
+
+resource_monthly = (
+    df.groupby(
+        ["anio", "mes", "tipo_de_recurso"],
+        dropna=False,
+    )[list(PRODUCTION_COLUMNS)]
+    .sum(min_count=1)
+    .unstack("tipo_de_recurso")
+    .sort_index()
+)
+resource_types = sorted(df["tipo_de_recurso"].dropna().unique())
+resource_monthly = resource_monthly.reindex(
+    columns=pd.MultiIndex.from_tuples(
+        [
+            (production, resource_type)
+            for resource_type in resource_types
+            for production in PRODUCTION_COLUMNS
+        ]
+    )
+)
+resource_monthly.columns = pd.MultiIndex.from_tuples(
+    [
+        (resource_type, PRODUCTION_COLUMNS[production])
+        for production, resource_type in resource_monthly.columns
+    ]
+)
+resource_monthly = resource_monthly.round(2).reset_index()
+resource_monthly.columns = pd.MultiIndex.from_tuples(
+    [
+        ("Period", "Year"),
+        ("Period", "Month"),
+        *resource_monthly.columns[2:],
+    ]
+)
+
+st.dataframe(
+    resource_monthly,
+    hide_index=True,
+)
+
+st.subheader("Monthly production trends by resource type")
+st.caption(
+    "Each chart shows one resource type and production series. "
+    "Oil is in m³; gas is in thousand m³. Percentage changes use each "
+    "series' latest month as the starting point."
+)
+
+production_timeseries = (
+    df.groupby(
+        ["anio", "mes", "tipo_de_recurso"],
+        dropna=False,
+    )[list(PRODUCTION_COLUMNS)]
+    .sum(min_count=1)
+    .reset_index()
+    .sort_values(["anio", "mes"])
+)
+production_timeseries["date"] = pd.to_datetime(
+    {
+        "year": production_timeseries["anio"],
+        "month": production_timeseries["mes"],
+        "day": 1,
+    }
+)
+
+chart_columns = st.columns(2)
+for index, resource_type in enumerate(resource_types):
+    resource_data = production_timeseries.loc[
+        production_timeseries["tipo_de_recurso"].eq(resource_type)
+    ]
+    for production, label in PRODUCTION_COLUMNS.items():
+        fig = px.line(
+            resource_data,
+            x="date",
+            y=production,
+            markers=True,
+            title=f"{resource_type} — {label}",
+            labels={"date": "Date", production: label},
+        )
+        fig.update_layout(height=320, margin={"t": 55, "b": 20})
+        with chart_columns[index % len(chart_columns)]:
+            metric_columns = st.columns(2)
+            for metric_column, months_back, fallback in (
+                (metric_columns[0], 1, False),
+                (metric_columns[1], 12, True),
+            ):
+                metric_label, variation, help_text = production_variation(
+                    resource_data,
+                    production,
+                    months_back,
+                    fallback_to_earliest=fallback,
+                )
+                metric_column.metric(
+                    metric_label,
+                    variation,
+                    help=help_text,
+                )
+            st.plotly_chart(fig)
