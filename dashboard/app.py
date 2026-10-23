@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from pathlib import Path
+import sys
 
 import pandas as pd
 import plotly.express as px
@@ -8,6 +9,14 @@ import streamlit as st
 
 
 ROOT = Path(__file__).resolve().parents[1]
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
+
+from dashboard.well_analysis import render_well_analysis
+from dashboard.area_summary import render_area_summary
+from src.production_units import calculate_boe
+
+
 DATA_PATH = ROOT / "data" / "processed" / "cgc_production_2025_2026.parquet"
 
 PRODUCTION_COLUMNS = {
@@ -180,6 +189,21 @@ st.caption(
 
 df = load_data(str(DATA_PATH), DATA_PATH.stat().st_mtime)
 
+dashboard_view = st.segmented_control(
+    "Dashboard section",
+    ["Production overview", "Well analysis", "Area summary"],
+    default="Production overview",
+    label_visibility="collapsed",
+)
+if dashboard_view is None:
+    st.stop()
+if dashboard_view == "Well analysis":
+    render_well_analysis(df)
+    st.stop()
+if dashboard_view == "Area summary":
+    render_area_summary(df)
+    st.stop()
+
 st.subheader("Monthly production by resource type")
 st.caption(
     "Monthly totals by year and resource type • "
@@ -283,6 +307,52 @@ for index, resource_type in enumerate(resource_types):
                 )
             st.plotly_chart(fig)
 
+st.subheader("Monthly combined production")
+st.caption(
+    "Oil and gas converted to thousands of barrels of oil equivalent (MBOE). "
+    "Oil uses 6.28981077 barrels per m³; gas uses 35.3146667 Mcf per thousand "
+    "m³ and 6 Mcf per BOE."
+)
+
+monthly_combined = (
+    df.groupby(["anio", "mes"])[list(PRODUCTION_COLUMNS)]
+    .sum(min_count=1)
+    .reset_index()
+    .sort_values(["anio", "mes"])
+)
+monthly_combined["MBOE"] = calculate_boe(
+    monthly_combined["prod_pet"],
+    monthly_combined["prod_gas"],
+) / 1000
+monthly_combined["date"] = pd.to_datetime(
+    {
+        "year": monthly_combined["anio"],
+        "month": monthly_combined["mes"],
+        "day": 1,
+    }
+)
+monthly_mboe_chart = px.line(
+    monthly_combined,
+    x="date",
+    y="MBOE",
+    markers=True,
+    labels={"date": "Date", "MBOE": "Production (MBOE)"},
+)
+monthly_mboe_chart.update_layout(height=360, margin={"t": 30, "b": 20})
+monthly_metric_columns = st.columns(2)
+for metric_column, months_back, fallback in (
+    (monthly_metric_columns[0], 1, False),
+    (monthly_metric_columns[1], 12, True),
+):
+    metric_label, variation, help_text = production_variation(
+        monthly_combined,
+        "MBOE",
+        months_back,
+        fallback_to_earliest=fallback,
+    )
+    metric_column.metric(metric_label, variation, help=help_text)
+st.plotly_chart(monthly_mboe_chart)
+
 st.subheader("Quarterly production by resource type")
 st.caption(
     "Quarterly totals sum the monthly volumes in each calendar quarter. "
@@ -346,3 +416,51 @@ for index, resource_type in enumerate(resource_types):
                     help=help_text,
                 )
             st.plotly_chart(fig)
+
+st.subheader("Quarterly combined production")
+st.caption("Quarterly oil and gas totals converted to thousands of BOE (MBOE).")
+
+quarterly_combined = df.copy()
+quarterly_combined["quarter"] = (quarterly_combined["mes"] - 1) // 3 + 1
+quarterly_combined = (
+    quarterly_combined.groupby(["anio", "quarter"])[list(PRODUCTION_COLUMNS)]
+    .sum(min_count=1)
+    .reset_index()
+    .sort_values(["anio", "quarter"])
+)
+quarterly_combined["MBOE"] = calculate_boe(
+    quarterly_combined["prod_pet"],
+    quarterly_combined["prod_gas"],
+) / 1000
+quarterly_combined["quarter_start"] = pd.to_datetime(
+    {
+        "year": quarterly_combined["anio"],
+        "month": (quarterly_combined["quarter"] - 1) * 3 + 1,
+        "day": 1,
+    }
+)
+quarterly_combined["period"] = (
+    quarterly_combined["anio"].astype(str)
+    + " Q"
+    + quarterly_combined["quarter"].astype(str)
+)
+quarterly_mboe_chart = px.bar(
+    quarterly_combined,
+    x="period",
+    y="MBOE",
+    labels={"period": "Quarter", "MBOE": "Production (MBOE)"},
+    category_orders={"period": quarterly_combined["period"].tolist()},
+)
+quarterly_mboe_chart.update_layout(height=360, margin={"t": 30, "b": 20})
+quarterly_metric_columns = st.columns(2)
+for metric_column, quarters_back in (
+    (quarterly_metric_columns[0], 1),
+    (quarterly_metric_columns[1], 4),
+):
+    metric_label, variation, help_text = quarterly_variation(
+        quarterly_combined,
+        "MBOE",
+        quarters_back,
+    )
+    metric_column.metric(metric_label, variation, help=help_text)
+st.plotly_chart(quarterly_mboe_chart)
